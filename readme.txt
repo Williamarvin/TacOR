@@ -54,6 +54,11 @@ python edge_test.py -i <image>
 EXAMPLE:
 python edge_test.py -i /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg
 
-
 Normal yolo testing
 python detect.py --weights yolov5s.pt --source 0
+
+
+git status
+git add .
+git commit -m "message"
+git push
