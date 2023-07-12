@@ -57,7 +57,7 @@ python edge_test.py -i /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/d
 Normal yolo testing
 python detect.py --weights yolov5s.pt --source 0
 
-
+complete process 
 git status
 git add .
 git commit -m "message"
