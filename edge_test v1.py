@@ -9,35 +9,23 @@ from PIL import Image
 import string
 import argparse 
 import sys
-from pathlib import Path
 
-FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0]
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))  # add ROOT to PATH
-ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-
-#input 
 parser = argparse.ArgumentParser(description = 'path to image')
-parser.add_argument('-i', '--input', type = str, help = 'input image directory')        #in progress
+parser.add_argument('-i', '--input', type = str, help = 'input image directory')
 parser.add_argument('-o', '--output', type = str, help = 'output image directory')
 parser.add_argument('-d', '--detecton', type = bool, help = 'Detection on')
-parser.add_argument('-non', '--live', type = str, default = "yes", help = 'image')
+parser.add_argument('-w', '--live', type = str, help = 'image')
 args = parser.parse_args()
 
 def yolo_test():
-    # os.chdir('darknet') #change directory
-    # os.system('./darknet detector test cfg/coco.data cfg/yolov3.cfg yolov3.weights /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg')
-    filename = os.path.basename(args.input)
-    os.chdir('yolov5')
-    os.system('python detect.py --weights yolov5s.pt --source ' + args.input)
-    image = Image.open(ROOT/ "results" /filename)
+    os.chdir('darknet') #change directory
+    os.system('./darknet detector test cfg/coco.data cfg/yolov3.cfg yolov3.weights /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg')
+    image = Image.open("/Users/williamfisilo/Desktop/Tactilesys/Tactile_backend/darknet/predictions.jpg")
     image.show(image)
-    os.remove(ROOT/ "results" /filename)
-    
-    
-# def voice_out():
-#     os.system('say "There is one person"')
+
+
+def voice_out():
+    os.system('say "There is one person"')
 
 def save_frame_camera_key(device_num, dir_path, basename, ext='jpg', delay=1, window_name='frame'):
     cap = cv2.VideoCapture(device_num)
@@ -61,7 +49,7 @@ def save_frame_camera_key(device_num, dir_path, basename, ext='jpg', delay=1, wi
 
 def edge_photo (path):
     # width1 = int(input("width:"))
-    # height1 =int(input("height:")) custom pixel
+    # height1 =int(input("height:"))
     width1 = 100
     height1 = 100
     
@@ -137,11 +125,9 @@ def connect():
 
 if __name__ =="__main__":
     
-    #live camera
-    if args.live == "yes":
-        save_frame_camera_key(0, 'data/temp', 'camera_capture')
+    save_frame_camera_key(0, 'data/temp', 'camera_capture')
     #to add in os read the latest photo
-    path = args.input
+    path= "/Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg"
 
     #to initiate connection with arduino
     port=connect()
@@ -152,11 +138,13 @@ if __name__ =="__main__":
         print("no port is connected")
 
     #processed photo and get the edges of the photo
-    img = edge_photo(path)
+    img=edge_photo(path)
     print(img)
-    
     yolo_test()
-    #voice_out()
+    '''(testing phase)
+
+    voice_out()
+    '''
     os.remove(path)
     sys.exit(0)
     #return row and col coordinate of non-zero pixel

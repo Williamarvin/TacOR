@@ -37,7 +37,8 @@ conda install -c conda-forge gtts
 conda install -c conda-forge pydub
 conda install -c conda-forge ffmpeg
 
-python -u "/Users/williamfisilo/Desktop/Tactilesys/Tactile_backend/edge_test.py"
+For running with object detection webcam: python -u "/Users/williamfisilo/Desktop/Tactilesys/Tactile_backend/edge_test.py"
+For only object detection: cd darknet && ./darknet detect cfg/yolov3.cfg yolov3.weights data/dog.jpg && cd ..
 
 run this for object detection plan
 cd darknet
@@ -48,4 +49,11 @@ cd darknet
 
 simplify the process
 
-change
+using parse, able to use custom paths now
+python edge_test.py -i <image>
+EXAMPLE:
+python edge_test.py -i /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg
+
+
+Normal yolo testing
+python detect.py --weights yolov5s.pt --source 0

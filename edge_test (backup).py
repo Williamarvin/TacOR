@@ -17,23 +17,21 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-#input 
 parser = argparse.ArgumentParser(description = 'path to image')
-parser.add_argument('-i', '--input', type = str, help = 'input image directory')        #in progress
+parser.add_argument('-i', '--inputs', type = str, help = 'input image directory')                #in progress
 parser.add_argument('-o', '--output', type = str, help = 'output image directory')
 parser.add_argument('-d', '--detecton', type = bool, help = 'Detection on')
-parser.add_argument('-non', '--live', type = str, default = "yes", help = 'image')
+parser.add_argument('-w', '--live', type = str, help = 'image')
 args = parser.parse_args()
 
 def yolo_test():
     # os.chdir('darknet') #change directory
     # os.system('./darknet detector test cfg/coco.data cfg/yolov3.cfg yolov3.weights /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg')
-    filename = os.path.basename(args.input)
     os.chdir('yolov5')
-    os.system('python detect.py --weights yolov5s.pt --source ' + args.input)
-    image = Image.open(ROOT/ "results" /filename)
+    os.system('python detect.py --weights yolov5s.pt --source ' + args.inputs)
+    image = Image.open(ROOT/ "results/camera_capture_0.jpg")
     image.show(image)
-    os.remove(ROOT/ "results" /filename)
+    os.remove(ROOT/ "results/camera_capture_0.jpg")
     
     
 # def voice_out():
@@ -137,11 +135,9 @@ def connect():
 
 if __name__ =="__main__":
     
-    #live camera
-    if args.live == "yes":
-        save_frame_camera_key(0, 'data/temp', 'camera_capture')
+    save_frame_camera_key(0, 'data/temp', 'camera_capture')
     #to add in os read the latest photo
-    path = args.input
+    path = args.inputs
 
     #to initiate connection with arduino
     port=connect()
