@@ -11,27 +11,30 @@ import argparse
 import sys
 from pathlib import Path
 
+#initialiser
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
+#input 
 parser = argparse.ArgumentParser(description = 'path to image')
-parser.add_argument('-i', '--inputs', type = str, help = 'input image directory')                #in progress
+parser.add_argument('-i', '--input', type = str, help = 'input image directory')        #in progress
 parser.add_argument('-o', '--output', type = str, help = 'output image directory')
 parser.add_argument('-d', '--detecton', type = bool, help = 'Detection on')
-parser.add_argument('-w', '--live', type = str, help = 'image')
+parser.add_argument('-non', '--live', type = str, default = "yes", help = 'image')
 args = parser.parse_args()
 
 def yolo_test():
     # os.chdir('darknet') #change directory
     # os.system('./darknet detector test cfg/coco.data cfg/yolov3.cfg yolov3.weights /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg')
+    filename = os.path.basename(args.input)
     os.chdir('yolov5')
-    os.system('python detect.py --weights yolov5s.pt --source ' + args.inputs)
-    image = Image.open(ROOT/ "results/camera_capture_0.jpg")
+    os.system('python detect.py --weights yolov5s.pt --source ' + args.input)
+    image = Image.open(ROOT/ "results" /filename)
     image.show(image)
-    os.remove(ROOT/ "results/camera_capture_0.jpg")
+    os.remove(ROOT/ "results" /filename)
     
     
 # def voice_out():
@@ -134,31 +137,36 @@ def connect():
         print(" error occured during connection set up")
 
 if __name__ =="__main__":
+    path = args.input
+    #live camera
     
-    save_frame_camera_key(0, 'data/temp', 'camera_capture')
-    #to add in os read the latest photo
-    path = args.inputs
-
-    #to initiate connection with arduino
-    port=connect()
-    try:
-        print(port.isOpen())
-
-    except AttributeError:
-        print("no port is connected")
-
+    if args.live == "yes":
+        save_frame_camera_key(0, 'data/temp', 'camera_capture')
+    
     #processed photo and get the edges of the photo
     img = edge_photo(path)
     print(img)
     
+    #object detection
     yolo_test()
-    #voice_out()
+    
+    #delete image
     os.remove(path)
+    
+    #exit program
     sys.exit(0)
-    #return row and col coordinate of non-zero pixel
-    have_pix=pixel_location(img)
-    #to send over to arduino through port connected
-    send_serial(have_pix,port)
+    
+#to initiate connection with arduino
+    # port=connect()
+    # try:
+    #     print(port.isOpen())
+
+    # except AttributeError:
+    #     print("no port is connected")
+    # #return row and col coordinate of non-zero pixel
+    # have_pix=pixel_location(img)
+    # #to send over to arduino through port connected
+    # send_serial(have_pix,port)
     
     
 

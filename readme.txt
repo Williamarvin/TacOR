@@ -7,8 +7,14 @@ This folder contains 2 major code file
 -------------------------------------------------------------------
 Please install the follow dependecies for edge_test.py
 
+python 3.10.9
 opencv 4.7.0.68 
 pyserial 3.5
+opencv-python
+numpy
+pyserial
+pillow
+argparse
 
 -run the python file which will automatically run the sample image
 under the same folder diretory and send the extracted info to the arduino
