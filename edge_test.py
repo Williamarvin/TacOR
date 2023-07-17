@@ -9,7 +9,6 @@ import argparse
 import sys
 from pathlib import Path
 import re
-import subprocess
 
 #initialiser
 FILE = Path(__file__).resolve()
