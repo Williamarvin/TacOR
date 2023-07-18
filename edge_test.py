@@ -84,10 +84,9 @@ def edge_photo (path):
     to_show= cv2.resize(edges,(width,height), interpolation=cv2.INTER_NEAREST)
     cv2.imshow('Canny Edge Detection',to_show)
 
-    cv2.waitKey(5)
+    cv2.waitKey(0)
     # Close all OpenCV windows
     cv2.destroyAllWindows()
-    print("close")
     return edges
 
 #sending signal to tactile
@@ -164,13 +163,20 @@ def tactile(path, img):
     # Close the serial port when done
     port.close()
     
+def rembg(path):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    newpath = os.path.join(current_dir, "data/temp/(b).jpeg")
+    os.system("rembg i " + path + " " + newpath)
+    pass
+    
 def detect_options(path):
     while True:
         newoptions = input('please select an option\n'
                             'a) Object detection and sound output\n'
-                            'b) tactile activation\n' 
-                            'c) return to main menu\n'
-                            'd) exit\n')
+                            'b) tactile activation\n'   
+                            'c) Remove background (beta)\n'
+                            'd) return to main menu\n'
+                            'e) exit\n')
         
         newoptions = newoptions.lower()
         
@@ -184,14 +190,17 @@ def detect_options(path):
             
             #tactile elevation
             #tactile(path, img)
-
         elif newoptions == "c":
+            #rembg
+            rembg(path)
+            
+        elif newoptions == "d":
             #return to main menu
             os.remove(path)
             print("Back to main menu")
             break
 
-        elif newoptions == "d":
+        elif newoptions == "e":
             #exit
             os.remove(path)
             print("exit")
@@ -201,10 +210,15 @@ def detect_options(path):
             #error
             print("invalid option")
             continue
+
             
 if __name__ == "__main__":
     args = parseopt()
     path = args.input
+    
+    if path is not None:
+        pass
+        sys.exit(0)
     
     while True:
         options = input('please enter an option you want to have\n'
@@ -220,6 +234,7 @@ if __name__ == "__main__":
             current_dir = os.path.dirname(os.path.abspath(__file__))
             path = os.path.join(current_dir, "data/temp/camera_capture_0.jpg")
             detect_options(path)
+            
         
        # Image input
         elif options == "b":
@@ -243,7 +258,6 @@ if __name__ == "__main__":
                             
             current_dir = os.path.dirname(os.path.abspath(__file__))
             imgpath = os.path.join(current_dir, "data/temp", image_name)
-            edge_photo(imgpath)
             detect_options(imgpath)
                 
         elif options == "c":

@@ -42,6 +42,7 @@ conda install -c anaconda pillow
 conda install -c conda-forge gtts 
 conda install -c conda-forge pydub
 conda install -c conda-forge ffmpeg
+pip install "rembg[cli]"
 
 For running with object detection webcam: python -u "/Users/williamfisilo/Desktop/Tactilesys/Tactile_backend/edge_test.py"
 For only object detection: cd darknet && ./darknet detect cfg/yolov3.cfg yolov3.weights data/dog.jpg && cd ..
