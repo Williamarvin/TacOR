@@ -1,272 +1,295 @@
-import cv2
 import numpy as np
+import cv2
 import serial
 import serial.tools.list_ports as S
 import time
 import os
 from PIL import Image
-import argparse 
+import argparse
 import sys
 from pathlib import Path
 import re
+from paddleocr import PaddleOCR,draw_ocr
+import os 
+import sys
 
-#initialiser
-FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0]
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))  # add ROOT to PATH
-ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
+current_dir = os.path.dirname(os.path.abspath(__file__))
+midas_path = os.path.join(current_dir, "midas")
+sys.path.append(midas_path)
 
+import run
 
+class TactileSystem:
+    def __init__(self):
+        self.FILE = Path(__file__).resolve()
+        self.ROOT = self.FILE.parents[0]
+        if str(self.ROOT) not in sys.path:
+            sys.path.append(str(self.ROOT))
+        self.ROOT = Path(os.path.relpath(self.ROOT, Path.cwd()))
+        self.width2 =  100
+        self.height2 = 100
 
-#object detection test
-def yolo_test(path):
-    # os.chdir('darknet') #change directory
-    # os.system('./darknet detector test cfg/coco.data cfg/yolov3.cfg yolov3.weights /Users/williamfisilo/Desktop/Tactilesys/tactile_backend/data/temp/camera_capture_0.jpg')
-    
-    filename = os.path.basename(path)
-    os.chdir('yolov5')
-    os.system('python detect.py --weights yolov5s.pt --source ' + path)
-    image = Image.open(ROOT/ "results" /filename)
-    image.show(image)
-    os.remove(ROOT/ "results" /filename)
-    os.chdir("..")
-    
-# def voice_out():
-#     os.system('say "There is one person"')
+    def yolo_test(self, path):
+        filename = os.path.basename(path)
+        os.chdir('yolov5')
+        os.system(f'python detect.py --weights yolov5s.pt --source {path}')
+        image = Image.open(self.ROOT / "results" / filename)
+        image.show(image)
+        os.remove(self.ROOT / "results" / filename)
+        os.chdir("..")
 
-#live camera detection
-def save_frame_camera_key(device_num, dir_path, basename, ext='jpg', delay=1, window_name='frame'):
-    cap = cv2.VideoCapture(device_num)
+    def save_frame_camera_key(self, device_num, dir_path, basename, ext='jpg', delay=1, window_name='frame'):
+        cap = cv2.VideoCapture(device_num)
 
-    if not cap.isOpened():
-        return
+        if not cap.isOpened():
+            return
 
-    os.makedirs(dir_path, exist_ok=True)
-    base_path = os.path.join(dir_path, basename)
-    n = 0
-    while True:
-        ret, frame = cap.read()
-        cv2.imshow(window_name, frame)
-        key = cv2.waitKey(delay) & 0xFF
-        if key == ord('c'):
-            cv2.imwrite('{}_{}.{}'.format(base_path, n, ext), frame)
-            break
+        os.makedirs(dir_path, exist_ok=True)
+        base_path = os.path.join(dir_path, basename)
+        n = 0
+        while True:
+            ret, frame = cap.read()
+            cv2.imshow(window_name, frame)
+            key = cv2.waitKey(delay) & 0xFF
+            if key == ord('c'):
+                cv2.imwrite(f'{base_path}_{n}.{ext}', frame)
+                break
 
-    cv2.destroyWindow(window_name)
+        cv2.destroyWindow(window_name)
 
-#tactile actuator
-def edge_photo (path):
-    # width1 = int(input("width:"))
-    # height1 =int(input("height:")) custom pixel
-    print(path)
-    width1 = 100
-    height1 = 100
-    
-    # Read the original image
-    img = cv2.imread(path)
-    width,height=img.shape[:2]
-    # Display original image
-    cv2.imshow('Original', img)
-    time.sleep(1)
-    img = cv2.resize(img, (width1, height1), interpolation=cv2.INTER_AREA)
-    # Convert to graycsale
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    def edge_photo(self, path, width1, height1):
+        img = cv2.imread(path)
+        width, height = img.shape[:2]
+        cv2.imshow('Original', img)
+        cv2.waitKey(1)
+        img = cv2.resize(img, (width1, height1), interpolation=cv2.INTER_AREA)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(image=img, threshold1=100, threshold2=200)
+        print("the shape of processed picture is {}".format(edges.shape))
+        to_show = cv2.resize(edges, (width, height), interpolation=cv2.INTER_NEAREST)
+        cv2.imshow('Canny Edge Detection', to_show)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        return edges
 
-    # Blur the image for better edge detection
-    #img = cv2.GaussianBlur(img, (3, 3), 0)
+    def pixel_location(self, img):
+        have_pixel = np.where(img > 0)
+        print(have_pixel)
+        return have_pixel
 
+    def wait_response(self, port):
+        while True:
+            if port.read().decode() == '1':
+                break
 
-    # Canny Edge Detection
-    edges = cv2.Canny(image=img, threshold1=100, threshold2=200)  # Canny Edge Detection
-    print("the shape of processed picture is {}".format(edges.shape))
-    # Display Canny Edge Detection Image
-    to_show= cv2.resize(edges,(width,height), interpolation=cv2.INTER_NEAREST)
-    cv2.imshow('Canny Edge Detection',to_show)
+    def send_serial(self, have_pix, port):
+        port.write("s".encode('ascii'))
+        length = len(have_pix[0])
+        to_send = ""
+        self.wait_response(port)
+        print("now sending pixel info")
+        for i in range(length):
+            row = have_pix[0][i]
+            col = have_pix[1][i]
 
-    cv2.waitKey(0)
-    # Close all OpenCV windows
-    cv2.destroyAllWindows()
-    return edges
+            to_send += 'r' + str(row) + 'c' + str(col)
+            if len(to_send) >= 32:
+                port.write(to_send.encode('ascii'))
+                to_send = ""
+                self.wait_response(port)
+        print(to_send)
+        port.write(to_send.encode('ascii'))
+        self.wait_response(port)
+        port.close()
 
-#sending signal to tactile
-def pixel_location(img):
-    #to extract coordinate of array with non-zero pixels
-    have_pixel=np.where(img>0)
-    print(have_pixel)
-    return have_pixel
+    def connect(self):
+        port_list = sorted(S.comports())
+        name = ""
+        if len(port_list) > 0:
+            name = port_list[0][0]
+        try:
+            port = serial.Serial(name, 9600)
+            print("{}is connected successfully".format(name))
+            time.sleep(2)
+            return port
+        except:
+            print(" error occurred during connection set up")
+            return None
 
-def wait_response(port):
-    while True:
-        if (port.read().decode() == '1'):
-            break
+    def tactile(self, path, img):
+        port = self.connect()
 
-def send_serial(have_pix,port):
-    port.write("s".encode('ascii'))
-    length= len(have_pix[0])
-    to_send = ""
-    wait_response(port)
-    print("now sending pixel info")
-    for i in range(length):
-        row= have_pix[0][i]
-        col=have_pix[1][i]
+        try:
+            print(port.isOpen())
+        except AttributeError:
+            print("no port is connected")
 
-        to_send+='r'+str(row)+'c'+str(col)
-        if len(to_send)>=32: #to ensure the byte buffer of receiver still was not overloaded
-            port.write(to_send.encode('ascii'))
-            to_send=""
-            wait_response(port)
-    print(to_send)
-    port.write(to_send.encode('ascii'))
-    wait_response(port)
-    port.close()
+        have_pix = self.pixel_location(img)
+        self.send_serial(have_pix, port)
+        port.close()
 
-def connect():
-    port_list = sorted(S.comports())
-    name=""
-    if len(port_list) > 0:
-        #name = port_list[2][0]
-        name = port_list[0][0]
-    try:
-        port = serial.Serial(name, 9600)
-        print("{}is connected successfully".format(name))
-        time.sleep(2)
-        return port
-    except:
-        print(" error occured during connection set up")
-        
-# user interface (main)
-def parseopt():
-    #in progress
-    parser = argparse.ArgumentParser(description = 'path to image')
-    parser.add_argument('-i', '--input', type = str, help = 'input image directory')              
-    parser.add_argument('-o', '--output', type = str, help = 'output image directory')
-    parser.add_argument('-d', '--detecton', type = bool, help = 'Detection on')
-    parser.add_argument('-non', '--live', type = str, default = "yes", help = 'image')
-    opts = parser.parse_args()
-    return opts
+    def rembg(self, path):
+        newpath = os.path.basename(path)
+        name, extension = os.path.splitext(newpath)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        imgpath = os.path.join(current_dir, "data/temp", name + "_bg" + extension)
+        os.system("rembg i " + path + " " + imgpath)
+        return imgpath
 
-def tactile(path, img):
-    # tactile elevation
-    port = connect()
-    
-    try:
-        print(port.isOpen())
-    except AttributeError:
-        print("no port is connected")
-    
-    #return row and col coordinate of non-zero pixel
-    have_pix=pixel_location(img)
-    
-    #to send over to arduino through port connected
-    send_serial(have_pix, port)
-    # Close the serial port when done
-    port.close()
-    
-def rembg(path):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    newpath = os.path.join(current_dir, "data/temp/(b).jpeg")
-    os.system("rembg i " + path + " " + newpath)
-    pass
-    
-def detect_options(path):
-    while True:
-        newoptions = input('please select an option\n'
-                            'a) Object detection and sound output\n'
-                            'b) tactile activation\n'   
-                            'c) Remove background (beta)\n'
-                            'd) return to main menu\n'
-                            'e) exit\n')
-        
-        newoptions = newoptions.lower()
-        
-        if newoptions == "a":
-            #object detection and sound output
-            yolo_test(path)
+    def text_detect(self, path):
+        ocr = PaddleOCR(use_angle_cls=True, lang='en')
+        result = ocr.ocr(path, cls=True)
+        for idx in range(len(result[0])):
+            print(result[0][idx][1][0])
+            os.system('say -v Samantha ' + result[0][idx][1][0])
             
-        elif newoptions == "b":
-            #edge detection
-            img = edge_photo(path)
+    def clear_folder(self):
+        directory = self.ROOT / 'data/temp'
+        for image in os.listdir(directory):
+            if image is not None:
+                file_img = os.path.join(directory, image)
+                os.remove(file_img)
             
-            #tactile elevation
-            #tactile(path, img)
-        elif newoptions == "c":
-            #rembg
-            rembg(path)
-            
-        elif newoptions == "d":
-            #return to main menu
-            os.remove(path)
-            print("Back to main menu")
-            break
+    def detect_options(self, path, width2, height2):
+        while True:
+            newoptions = input('please select an option\n'
+                               'a) Object detection and sound output\n'
+                               'b) tactile activation\n'
+                               'c) Remove background\n'
+                               'd) Depth detection\n'
+                               'e) return to main menu\n'
+                               'f) exit\n')
 
-        elif newoptions == "e":
-            #exit
-            os.remove(path)
-            print("exit")
-            sys.exit()
-            
-        else:
-            #error
-            print("invalid option")
-            continue
+            newoptions = newoptions.lower()
 
-            
-if __name__ == "__main__":
-    args = parseopt()
-    path = args.input
-    
-    if path is not None:
-        pass
-        sys.exit(0)
-    
-    while True:
-        options = input('please enter an option you want to have\n'
-                        'a) Live detection\n'
-                        'b) put in an image\n'
-                        'c) exit the system\n')
-        
-        options = options.lower()
-        #path input
-        if options == "a":
-            #live image taking
-            save_frame_camera_key(0, "data/temp", 'camera_capture')
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(current_dir, "data/temp/camera_capture_0.jpg")
-            detect_options(path)
-            
-        
-       # Image input
-        elif options == "b":
-            while True:
-                # Ask for the image name
-                image_name = input("Enter the name of the image (with extension): ")
+            if newoptions == "a":
+                self.yolo_test(path)
+                self.text_detect(path)
 
-                # Check if correct path
-                folder_path = "data/temp"
-                image_extensions_pattern = re.compile(r".*\.(jpg|jpeg|png|gif|bmp)$", re.IGNORECASE)
+            elif newoptions == "b":
+                img = self.edge_photo(path, width2, height2)
+                #tactile(path, img)
+                # port=connect()
+                # try:
+                #     print(port.isOpen())
 
-                # Get list of image files in the directory
-                image_files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f)) and image_extensions_pattern.match(f)]
-
-                # Check if the image exists in the directory
-                if image_name in image_files:
-                    print(f"{image_name} is a valid image.")
-                    break
-                else:
-                    print(f"{image_name} is not found in the directory. Please try again.")
-                            
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            imgpath = os.path.join(current_dir, "data/temp", image_name)
-            detect_options(imgpath)
+                # except AttributeError:
+                #     print("no port is connected")
                 
-        elif options == "c":
-            #exit the system
-            print("exit")
+                # #return row and col coordinate of non-zero pixel
+                # have_pix=pixel_location(img)
+                # #to send over to arduino through port connected
+                # send_serial(have_pix,port)
+
+            elif newoptions == "c":
+                path = self.rembg(path)
+            
+            elif newoptions == "d":
+                depth_tac = run.run("data/temp", "data/temp", "midas/weights/dpt_swin2_large_384.pt", "dpt_swin2_large_384", width2, height2)
+                print(depth_tac)
+                
+            elif newoptions == "e":
+                print("Back to main menu")
+                break
+
+            elif newoptions == "f":
+                print("exit")
+                self.clear_folder()
+                sys.exit()
+
+            else:
+                print("invalid option")
+                continue
+
+    def parseopt(self):
+        parser = argparse.ArgumentParser(description='path to image')
+        parser.add_argument('-i', '--input', type=str, help='input image directory')
+        parser.add_argument('-o', '--output', type=str, help='output image directory')
+        parser.add_argument('-d', '--detection', type=str, help='choose between "image" or "camera" for object detection')
+        args = parser.parse_args()
+
+        if not args.detection and not args.output and not args.input:
+            return "a"
+
+        if not args.detection:
+            print("please specify if you want to use the software live or not using -d or --detection argument")
+            return "b"
+
+        if not args.input and args.detection == "image":
+            print("Please provide input image directory using -i or --input argument")
+            return "b"
+
+        return args
+
+    def run(self):
+        args = self.parseopt()
+
+        if args == "b": 
+            #invalid option
+            directory = "data/temp"
             sys.exit(0)
-        
-        else: 
-            continue
-                
-    #exit program   
-    sys.exit(0)
+
+        elif args == "a":
+            #normal route
+            while True:
+                options = input('please enter an option you want to have\n'
+                                'a) Live detection\n'
+                                'b) Put in an image\n'
+                                'c) Exit the system\n')
+
+                options = options.lower()
+
+                if options == "a":
+                    self.save_frame_camera_key(0, "data/temp", 'camera_capture')
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    path = os.path.join(current_dir, "data/temp/camera_capture_0.jpg")
+                    self.detect_options(path, self.width2, self.height2)
+
+                elif options == "b":
+                    while True:
+                        image_name = input("Enter the name of the image (with extension): ")
+                        folder_path = "data/temp"
+                        image_extensions_pattern = re.compile(r".*\.(jpg|jpeg|png|gif|bmp)$", re.IGNORECASE)
+                        image_files = [f for f in os.listdir(folder_path) if
+                                       os.path.isfile(os.path.join(folder_path, f)) and image_extensions_pattern.match(f)]
+
+                        if image_name in image_files:
+                            print(f"{image_name} is a valid image.")
+                            break
+                        else:
+                            print(f"{image_name} is not found in the directory. Please try again.")
+
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    imgpath = os.path.join(current_dir, "data/temp", image_name)
+                    self.detect_options(imgpath, self.width2, self.height2)
+
+                elif options == "c":
+                    print("Exit")
+                    self.clear_folder()
+                    sys.exit(0)
+                else:
+                    continue
+
+        else:
+            #args path, short cut
+            if args.detection == "live":
+                self.save_frame_camera_key(0, "data/temp", 'camera_capture')
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                path = os.path.join(current_dir, "data/temp/camera_capture_0.jpg")
+                self.yolo_test(path)
+                self.text_detect(path)
+
+            elif args.detection == "image":
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                path = os.path.join(current_dir, "data/temp/" + args.input)
+                self.yolo_test(path)
+                self.text_detect(path)
+            else:
+                print("please put in the proper parameters")
+
+def main():
+    system = TactileSystem()
+    system.run()
+
+if __name__ == "__main__":
+    main()
